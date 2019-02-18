@@ -56,11 +56,13 @@ args = parser.parse_args()
 print("CUDA Available: ", (args.use_cuda and torch.cuda.is_available()))
 device = torch.device("cuda" if (args.use_cuda and torch.cuda.is_available()) else "cpu")
 
-time_str = datetime.datetime.now().strftime("%Y_%m_%d__%H_%M")
+time_str = datetime.datetime.now().strftime("_%Y_%m_%d__%H_%M")
 
-results_folder = time_str + '_beta_' + str(args.beta) + '_epochs_' +\
-                 str(args.nEpochs) + '_from_' + str(args.source_label) + \
-                 '_to_' + str(args.adversarial_label) + '_lr_' + str(args.LR)
+results_folder = 'from_' + str(args.source_label) + \
+                 '_to_' + str(args.adversarial_label) + \
+                 time_str + '_beta_' + str(args.beta) + \
+                 '_epochs_' + str(args.nEpochs) +  \
+                 '_lr_' + str(args.LR)
 
 ips = check_output(['hostname', '--all-ip-addresses'])
 if ips == b'132.66.50.93 \n':
@@ -118,7 +120,7 @@ for epoch in range(1, num_epochs + 1):
         for param_group in optimizer.param_groups:
             param_group['lr'] = param_group['lr']*0.5
 
-test(model, device, test_loader, adversarial_tensor, args.beta, logger)
+attack_accuracy = test(model, device, test_loader, adversarial_tensor, args.beta, logger)
 epochs = range(1, len(train_losses) + 1)
 
 torch.save(model.state_dict(), os.path.join(args.outputDir, 'model.pth'))
@@ -144,10 +146,16 @@ with torch.no_grad():
     f.canvas.set_window_title('Beta: ' + str(args.beta) + 'Epochs: ' + str(args.nEpochs) + 'LR: ' + str(args.LR))
 
     axarr[0].imshow(in_grid)
-    axarr[0].set_title('Dataset Images')
+    axarr[0].set_title('Original Images')
+    axarr[0].set_yticklabels([])
+    axarr[0].set_xticklabels([])
 
     axarr[1].imshow(out_grid)
     axarr[1].set_title('Transformed Images, Target:' + str(args.adversarial_label))
+    axarr[1].set_yticklabels([])
+    axarr[1].set_xticklabels([])
+
+    f.suptitle('Targeted Attack Success ' + str(attack_accuracy))
 
     f.savefig(os.path.join(args.outputDir, 'original_vs_warped_images.png'))
 
@@ -174,7 +182,6 @@ plt.xticks(epochs)
 fig.savefig(os.path.join(args.outputDir, 'training_mse_loss.png'))
 
 if args.is_run_local:
-    # plt.show()
 
     plt.ioff()
     plt.show()

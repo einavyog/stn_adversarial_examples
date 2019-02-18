@@ -70,11 +70,15 @@ def load_cifar10(batch_size, source_label):
     if source_label is not None:
         train_labels_np = np.array(train_set.train_labels)
         idx = np.where(train_labels_np == source_label)
-        train_labels_np = train_labels_np[idx]
-        train_set.train_labels = train_labels_np.tolist()
-        train_set.train_data = train_set.train_data[idx]
 
-    train_loader = torch.utils.data.DataLoader(train_set, batch_size=batch_size, shuffle=True)# num_workers=2)
+    train_idx = idx[0]
+    print(train_idx.shape)
+    train_sampler = torch.utils.data.sampler.SubsetRandomSampler(train_idx)
+
+    train_loader = torch.utils.data.DataLoader(train_set,
+                                               batch_size=batch_size,
+                                               shuffle=False,
+                                               sampler=train_sampler)# num_workers=2)
 
     # Tasting dataset
     transform_test = transforms.Compose([
@@ -83,15 +87,20 @@ def load_cifar10(batch_size, source_label):
     ])
 
     test_set = datasets.CIFAR10(root='./data', train=False, download=True, transform=transform_test)
+    print(test_set.test_data.shape)
 
     if source_label is not None:
         test_labels_np = np.array(test_set.test_labels)
         idx = np.where(test_labels_np == source_label)
-        test_labels_np = test_labels_np[idx]
-        test_set.test_labels = test_labels_np.tolist()
-        test_set.test_data = test_set.test_data[idx]
 
-    test_loader = torch.utils.data.DataLoader(test_set, batch_size=batch_size, shuffle=False)#, num_workers=2)
+    test_idx = idx[0]
+    print(test_idx.shape)
+
+    test_sampler = torch.utils.data.sampler.SubsetRandomSampler(test_idx)
+    test_loader = torch.utils.data.DataLoader(test_set,
+                                              batch_size=batch_size,
+                                              shuffle=False,
+                                              sampler=test_sampler)
 
     return train_loader, test_loader
 

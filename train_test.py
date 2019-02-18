@@ -13,8 +13,7 @@ def calc_loss(out_warp_im, input_im, out_class, target_class, beta, affine_mat, 
     if LOSS_ON_AFFINE_MAT:
         identity_affine = torch.eye(2, 3).unsqueeze(0).repeat(affine_mat.shape[0], 1, 1)
         identity_affine = identity_affine.to(device)
-        # loss = MSE(affine_mat, identity_affine) + beta*F.nll_loss(out_class, target_class)
-        loss = beta*criterion(out_class, target_class)
+        loss = MSE(affine_mat, identity_affine) + beta*criterion(out_class, target_class)
         mse_loss = MSE(affine_mat, identity_affine)
 
     else:
@@ -26,7 +25,7 @@ def calc_loss(out_warp_im, input_im, out_class, target_class, beta, affine_mat, 
 
 def train(model, device, train_loader, optimizer, epoch, adversarial_target, beta):
     model.train()
-    MSE = nn.MSELoss()
+    model.classifier.eval()
 
     for batch_idx, (data, target) in enumerate(train_loader):
         data, target = data.to(device), target.to(device)
@@ -35,13 +34,6 @@ def train(model, device, train_loader, optimizer, epoch, adversarial_target, bet
         optimizer.zero_grad()
 
         output_warp, output_class, affine_mat = model(data)
-
-        # out_grid_list = []
-        # for i in range(0, output_warp.size()[0]):
-        #     #TODO: Add cliping?
-        #     out_grid_list.append(torchvision.utils.make_grid(output_warp[i,0,:,:])[None, 0,:,:])
-        #
-        # out_grid = torch.cat(out_grid_list)
 
         loss, mse_loss = calc_loss(output_warp, torch.squeeze(data), output_class, adversarial_class, beta, affine_mat, device)
 
@@ -58,7 +50,9 @@ def train(model, device, train_loader, optimizer, epoch, adversarial_target, bet
 
 # # A simple test procedure to measure STN the performances on MNIST.
 def test(model, device, test_loader, adversarial_target, beta, logger):
+
     with torch.no_grad():
+
         model.eval()
         test_loss = 0
         mse_loss = 0
@@ -66,23 +60,14 @@ def test(model, device, test_loader, adversarial_target, beta, logger):
         wrong = 0
         correct_original = 0
         wrong_original = 0
-        MSE = nn.MSELoss()
         targets = []
 
         for data, target in test_loader:
-        # for item in test_loader:
-        #     print(item.size())
-        #     print(item)
+
             data, target = data.to(device), target.to(device)
             adversarial_class = torch.squeeze(adversarial_target.expand(1, data.size()[0]))
 
             output_warp, output_class, affine_mat = model(data)
-
-            # out_grid_list = []
-            # for i in range(0, output_warp.size()[0]):
-            #     out_grid_list.append(torchvision.utils.make_grid(output_warp[0, 0, :, :])[None, 0, :, :])
-            #
-            # out_grid = torch.cat(out_grid_list)
 
             # sum up batch loss
             curr_test_loss, curr_mse_loss = calc_loss(output_warp, torch.squeeze(data), output_class, adversarial_class, beta, affine_mat, device)
@@ -131,6 +116,7 @@ def test(model, device, test_loader, adversarial_target, beta, logger):
                             100. * wrong_original / len(test_loader.dataset)))
         logger.info(targets_tensor)
 
+        return 100. * correct / len(test_loader.dataset)
 
 
 

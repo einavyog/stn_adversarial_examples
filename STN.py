@@ -80,7 +80,7 @@ class LeNet(nn.Module):
         x = F.relu(self.fc1(x))
         x = F.dropout(x, training=self.training)
         x = self.fc2(x)
-        return F.log_softmax(x, dim=1)
+        return x
 
 
 class Net(nn.Module):
@@ -96,7 +96,7 @@ class Net(nn.Module):
             self.after_localization_size = 3
         else:
             self.classifier = self.ResNet18()
-            self.classifier_model_name = 'ResNet18.pth'
+            self.classifier_model_name = 'pytorch-cifar/checkpoint/ckpt_final.t7'
             self.localization_in_channels = 3
             self.after_localization_size = 4
 
@@ -139,16 +139,6 @@ class Net(nn.Module):
 
         return x, theta
 
-    # LeNet classification network forward function
-    # def classifier(self, x):
-    #         x = F.relu(F.max_pool2d(self.conv1(x), 2))
-    #         x = F.relu(F.max_pool2d(self.conv2_drop(self.conv2(x)), 2))
-    #         x = x.view(-1, 320)
-    #         x = F.relu(self.fc1(x))
-    #         x = F.dropout(x, training=self.training)
-    #         x = self.fc2(x)
-    #         return F.log_softmax(x, dim=1)
-
     # Full forward function
     def forward(self, x):
         # transform the input
@@ -167,24 +157,30 @@ class Net(nn.Module):
 
         # Load the pre-trained model
         pretrained_model = os.path.join(curr_path, self.classifier_model_name)
-        pretrain_parameters = torch.load(pretrained_model, map_location='cpu')
 
-        # layer = 0
-        own_state = self.classifier.state_dict()
-        # print(own_state)
-        for param, key in zip(self.classifier.parameters(), pretrain_parameters.keys()):
+        for param in self.classifier.parameters():
             param.requires_grad = False
-            param = pretrain_parameters[key].data
-            if 'module.' in key:
-                key = key[7:]
-            own_state[key].copy_(param)
 
-            # if self.last_classifier_layer == layer:
-            # if self.last_classifier_layer == layer:
-            #     break
-            # layer += 1
+        if 'MNIST' == self.data_set:
+            pretrain_parameters = torch.load(pretrained_model, map_location='cpu')
+            pretrain_parameters = torch.load(pretrained_model, map_location='cpu')
+            self.classifier.load_state_dict(pretrain_parameters)
 
-        own_state = self.classifier.state_dict()
-        # print(own_state)
+        elif "CIFAR10" == self.data_set:
 
+            # Load checkpoint.
+            print('==> Resuming from checkpoint..')
+            # checkpoint = torch.load('/tmp/ckpt_final.t7', map_location='cpu')
+            checkpoint = torch.load(pretrained_model)
+
+            new_state_dict = {}
+            for k, v in checkpoint['net'].items():
+                name = k[7:]
+                new_state_dict[name] = v
+
+            # load params
+            self.classifier.load_state_dict(new_state_dict)
+
+        else:
+            print("not implemented")
 
