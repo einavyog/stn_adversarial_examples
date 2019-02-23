@@ -23,6 +23,8 @@ usage: generate_adversarial_examples.py [-h] [--seed SEED]
 
 ## Dependencies 
 
-PyTorch version: 0.4.0
-CUDA Version: 8.0.61
-cuDNN version is: 7102
+1. Pytorch 0.4.0
+2. Python 3.6 
+2. CUDA 8.0.61
+2. cuDNN 7102 
+
